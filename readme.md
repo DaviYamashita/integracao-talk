@@ -6,7 +6,7 @@
     <br>
     <p>Passos:</p>
 
-    <p>Fazer deploy/upload do Recurso estático para o Salesforce que está presente na pasta "staticresource"/p>
+    <p>Fazer deploy/upload do Recurso estático para o Salesforce que está presente na pasta "staticresource"</p>
 
     <p>Utilizar o nome epbxManagerConnection no recurso estático</p>
     <img src="uploadRecurso.png" alt="" />
