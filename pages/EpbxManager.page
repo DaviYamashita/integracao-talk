@@ -1,0 +1,635 @@
+<apex:page showHeader="false" standardStylesheets="false">
+   <html>
+
+   <head>
+      <link rel="stylesheet" href="https://manager.epbx.com.br/Salesforce/bootstrap/css/bootstrap.min.css" />
+      <link rel="stylesheet" href="https://manager.epbx.com.br/Salesforce/fontawesome/css/all.min.css" />
+      <!-- https://manager.epbx.com.br/ -->
+      <script src="https://manager.epbx.com.br/Service/scripts/jquery-3.1.0.min.js"></script>
+      <script src="https://manager.epbx.com.br/Service/scripts/jquery.signalR.min.js"></script>
+      <script src="https://manager.epbx.com.br/Service/signalr/hubs"></script>
+      <script src="https://manager.epbx.com.br/Salesforce/epbxManagerConfig.js"></script>
+      <!-- <script src="https://manager.epbx.com.br/Salesforce/epbxManagerConnection.js"></script> -->
+
+      <script src="https://manager.epbx.com.br/Salesforce/fontawesome/js/all.min.js"></script>
+      <script type='text/javascript' src="/resource/epbxManagerConnection"></script>
+      <!-- <apex:includeScript value="${}"/> -->
+      <apex:includeScript value="/support/console/54.0/integration.js"/>
+      <apex:includeScript value="/support/api/54.0/interaction.js"/>
+
+      <script type="text/javascript">
+         // Callback of API method: setSoftphonePanelHeight
+         var setSoftphonePanelHeightCallback = function (response) {
+            // Returns true if setSoftphonePanelHeight method is executed successfully, false otherwise
+            if (response.result) {
+               alert('setSoftphonePanelHeight is successfully executed.');
+            }
+            else {
+               alert('setSoftphonePanelHeight failed.');
+            }
+         };
+         // Invokes API method: setSoftphonePanelHeight
+         function setSoftphonePanelHeight() {
+            sforce.opencti.setSoftphonePanelHeight({
+               heightPX: 500,
+               callback: setSoftphonePanelHeightCallback
+            });
+         }
+         // Callback of API method: setSoftphonePanelWidth
+         var setSoftphonePanelWidthCallback = function (response) {
+            // Returns true if setSoftphonePanelWidth method is executed successfully, false otherwise
+            if (response.result) {
+               alert('setSoftphonePanelWidth is successfully executed.');
+            }
+            else {
+               alert('setSoftphonePanelWidth failed.');
+            }
+         };
+         // Invokes API method: setSoftphonePanelWidth
+         function setSoftphonePanelWidth() {
+            sforce.opencti.setSoftphonePanelWidth({
+               widthPX: 500,
+               callback: setSoftphonePanelHeightCallback
+            });
+         }
+         // Callback of API method: setSoftphoneItemIcon
+         var setSoftphoneItemIconCallback = function (response) {
+            // Returns true if setSoftphoneItemIcon method is executed successfully, false otherwise
+            if (response.result) {
+               alert('setSoftphoneItemIcon is successfully executed.');
+            }
+            else {
+               alert('setSoftphoneItemIcon failed.');
+            }
+         };
+         // Invokes API method: setSoftphoneItemIcon
+         function setSoftphoneItemIcon() {
+            sforce.opencti.setSoftphoneItemIcon({
+               key: 'call',
+               callback: setSoftphoneItemIconCallback
+            });
+         }
+         // Callback of API method: setSoftphoneItemLabel
+         var setSoftphoneItemLabelCallback = function (response) {
+            // Returns true if setSoftphoneItemLabel method is executed successfully, false otherwise
+            if (response.result) {
+               alert('setSoftphoneItemLabel is successfully executed.');
+            }
+            else {
+               alert('setSoftphoneItemLabel failed.');
+            }
+         };
+         // Invokes API method: setSoftphoneItemLabel
+         function setSoftphoneItemLabel() {
+            sforce.opencti.setSoftphoneItemLabel({
+               Label: 'MySoftphone',
+               callback: setSoftphoneItemLabelCallback
+            });
+         }
+
+         /* Discar */
+         var adapter;
+         var events;
+         var windowHandler;
+
+         var chamadaAtual = null;
+         var intervaloOptions = {};
+         var intervaloAtual = {};
+         var ultimoGlobalId = '';
+
+         var isLigacaoExterna = false;
+
+         /* Controle de Tela */
+         var statusText;
+         var panelLogin;
+         var panelRamal
+
+         var callbackScreenPop = function (response) {
+            console.log(response);
+         }
+
+         var callbackPopUp = function (response) {
+            if (response.result) {
+               var obj = JSON.parse(response.result);
+               //var cliente = Object.keys(obj)[0];
+               //sforce.interaction.screenPop(cliente, true, callbackScreenPop);
+               console.log('API method call executed successfully! returnValue:', response.returnValue);
+            } else {
+               console.error('Something went wrong! Errors:', response.errors);
+            }
+         }
+
+         var onclickToDial = function (response) {
+            var obj = JSON.parse(response.result);
+            var numero = obj.number;
+            discar(numero);
+         }
+
+         var enableClickToDial = function () {
+            sforce.interaction.cti.enableClickToDial();
+            sforce.interaction.cti.onClickToDial(onclickToDial);
+         }
+
+         var showMessage = function (mensagem) {
+            statusText.text(mensagem)
+         }
+
+         var loginError = function (errMessage) {
+            showMessage("Erro ao logar ramal");
+         }
+
+         var mostrarIntervaloStatus = function (ramalStatusDetalheId) {
+            var intervalo = intervaloOptions[ramalStatusDetalheId];
+            if (intervalo) {
+               $("#intervaloStatus").text(intervalo.Descricao);
+            }
+         }
+
+         var deslogar = function () {
+            adapter.server.terminar().then(function () {
+               panelLogin.show();
+               panelRamal.hide();
+               btnDeslogar.hide();
+               showMessage("Ramal Deslogado");
+            }).fail(function () {
+               showMessage("Erro ao deslogar o ramal");
+            });
+         }
+
+         var discar = function (numero) {
+            if (!numero) {
+               showMessage("Número inválido");
+               return false;
+            }
+
+            showMessage("Discando " + numero);
+
+            var tipoDiscagem = numero.length > 6 ? 1 : 2;
+
+            adapter.server.discar(numero, tipoDiscagem)
+               .then(function () {
+                  btnDesligar.show();
+                  btnDiscar.hide()
+                  groupTelefone.hide();
+               })
+               .fail(function (err) {
+                  showMessage("Erro ao efetuar a discagem");
+                  btnDesligar.hide();
+                  btnDiscar.show()
+                  groupTelefone.show();
+               });
+         }
+
+
+         /**/
+         function consultar(numero) {
+            if (!numero) {
+               showMessage("Número inválido");
+               return false;
+            }
+
+            btnConsultar.hide();
+            btnLiberarConsulta.show();
+
+            var tipoDiscagem = numero.length > 6 ? 1 : 2;
+
+            adapter.server
+               .consultar(numero, tipoDiscagem)
+               .then(() => {
+                  // Chamada atual ficou em espera
+                  showMessage(`Consultando ${numero}`);
+                  btnTransferir.prop("disabled", false);
+               })
+               .fail(err => {
+                  showMessage(err.message);
+                  btnConsultar.show();
+                  btnLiberarConsulta.hide();
+               });
+
+            return false;
+         }
+
+         function liberarConsulta() {
+            adapter.server
+               .liberarConsulta()
+               .then(() => {
+                  btnLiberarConsulta.hide();
+                  btnConsultar.show();
+                  showMessage("Consulta liberada");
+               })
+               .fail(() => {
+                  showMessage("Erro ao liberar consulta");
+               });
+         }
+
+         function transferir(numero) {
+            if (!numero) {
+               showMessage("Número inválido");
+               return false;
+            }
+
+            var tipoDiscagem = numero.length > 6 ? 1 : 2;
+            // Externo = 1 | Interno = 2
+            adapter.server.transferir(numero, tipoDiscagem);
+            // Esse método não retorna fail() quando não consegue fazer a transferência
+            // e não retorna nenhum objeto no then, por isso não tem como ser tratado aqui
+         }
+
+         var updateIntervalorOptions = function () {
+            var select = $("#intervaloSelect"),
+               value, key, option;
+
+            select.find("option").remove();
+
+            for (key in intervaloOptions) {
+               value = intervaloOptions[key];
+               if (intervaloAtual.RamalStatusDetalheId != value) {
+                  option = $("<option></option>")
+                     .attr("value", key)
+                     .text(key + " - " + value.Descricao);
+                  select.append(option);
+               }
+            }
+
+            /* var intervalo = intervaloOptions[intervaloAtual.RamalStatusDetalheId];
+             if (intervalo) {
+                $("#intervaloStatus").text(intervalo.Descricao);
+             }
+             */
+
+            select.val(intervaloAtual.RamalStatusDetalheId);
+         }
+
+         var consultaClientePorGlobalId = function (globalId) {
+            var url = 'https://manager.epbx.com.br/Renault/Api/Customer/GetByGlobalId?globalId=' + globalId;
+            return $.get(url);
+         }
+
+         var abrirFichaCliente = function (globalId) {
+            consultaClientePorGlobalId(globalId).then(function (response) {
+               var codigoCliente = response.ObjectID
+               //sforce.interaction.searchAndScreenPop(identificador, '', 'inbound', callbackPopUp);
+               //sforce.interaction.screenPop(codigoCliente, true, callbackScreenPop);
+               _openTab(codigoCliente);
+            }).catch(function(e) {
+               console.log(e);
+               console.log('erro consultaClientePorGlobalId');
+               console.log(e.message);
+            });
+         }
+
+         var _openTab = function(codigoCliente) {
+            sforce.console.openPrimaryTab(null, '/'+codigoCliente, false, 'In Call', function(e) {
+                  sforce.console.focusPrimaryTabById(e.id, function() {})
+               }, 'salesforceTab');
+         };
+
+         var setOpenPage = function(eventName, args) {
+            args.shift();
+            sessionStorage.setItem("openPage", JSON.stringify({event: eventName, args}));
+         }
+
+         /* Eventos Telefonia */
+         $(function () {
+            console.log("ready!");
+
+            adapter = $.epbxManagerClient;
+            events = $.epbxManagerClient.events;
+            windowHandler = $(window);
+
+            chamadaAtual = null;
+            intervaloOptions = {};
+            intervaloAtual = {};
+            isAdmin = false;
+
+            panelLogin = $("#panelLogin");
+            panelRamal = $("#panelRamal");
+            statusText = $("#statusText");
+            btnDeslogar = $("#btnDeslogar");
+            btnDiscar = $("#btnDiscar");
+            btnDesligar = $("#btnDesligar");
+            btnAbrirFicha = $("#btnAbrirFicha");
+            groupTelefone = $("#group-telefone");
+            formTransferencia = $("#formTransferencia");
+            formConsultar = $("#formConsultar");
+            btnTransferir = $("#btnTransferir");
+            btnConsultar = $("#btnConsultar");
+            btnLiberarConsulta = $("#btnLiberarConsulta");
+
+            panelRamal.hide();
+            btnDeslogar.hide();
+            btnDesligar.hide();
+            btnDiscar.show();
+            formTransferencia.hide();
+            formConsultar.hide();
+            btnLiberarConsulta.hide();
+            btnAbrirFicha.hide();
+
+            windowHandler.on(events.onLogado, function (event, ramal) {
+               setOpenPage("onLogado", $.makeArray(arguments));
+               panelLogin.hide();
+               panelRamal.show();
+               showMessage("Ramal logado");
+               enableClickToDial();
+               btnDeslogar.show()
+            });
+
+            windowHandler.on(events.onDeslogado, function (event, ramal) {
+               setOpenPage("onDeslogado", $.makeArray(arguments));
+               panelLogin.show();
+               panelRamal.hide();
+               btnDeslogar.hide();
+               btnDesligar.hide();
+               formTransferencia.hide();
+               btnLiberarConsulta.hide();
+               formConsultar.hide();
+               btnDiscar.show();
+               groupTelefone.show();
+               btnAbrirFicha.hide();
+               showMessage("Ramal Deslogado");
+            });
+
+            windowHandler.on(events.onDesliga, function (event, ramal) {
+               setOpenPage("onDesliga", $.makeArray(arguments));
+               showMessage("Ligação encerrada");
+               btnDesligar.hide();
+               formTransferencia.hide();
+               btnLiberarConsulta.hide();
+               formConsultar.hide();
+               btnDiscar.show();
+               groupTelefone.show();
+            });
+
+            windowHandler.on(events.onLogadoErro, function (event, ramal, ex) {
+               setOpenPage("onLogadoErro", $.makeArray(arguments));
+               panelLogin.show();
+               panelRamal.hide();
+               btnDeslogar.hide();
+               btnAbrirFicha.hide();
+               showMessage("Ramal Deslogado");
+            });
+
+            windowHandler.on(events.onConexaoErro, function (event, ramal, ex) {
+               setOpenPage("onConexaoErro", $.makeArray(arguments));
+               panelLogin.show();
+               panelRamal.hide();
+               btnDeslogar.hide();
+               btnAbrirFicha.hide();
+               showMessage("Ramal Deslogado");
+            });
+
+            windowHandler.on(events.onSignalrDisconnected, function () {
+               //sessionStorage.setItem("openPage", "onSignalrDisconnected");
+               panelLogin.show();
+               panelRamal.hide();
+               btnDeslogar.hide();
+            });
+
+            windowHandler.on(events.onSetIntervaloRamal, function (event, ramal, intervalo) {
+               //Intervalo Pendente
+               if (intervalo.Status == 1) return;
+
+               intervaloAtual = {
+                  RamalStatusDetalheId: intervalo.RamalStatusDetalheId
+               }
+
+               updateIntervalorOptions();
+            });
+
+            windowHandler.on(events.onInfoIntervaloRamal, function (event, ramal, infoIntervalo) {
+               intervaloOptions[infoIntervalo.RamalStatusDetalheId] = {
+                  Descricao: infoIntervalo.Descricao,
+                  Produtivo: infoIntervalo.Produtivo
+               };
+
+               updateIntervalorOptions();
+            });
+
+            windowHandler.on(events.onChamada, function (event, ramal, chamada) {
+               showMessage("Evento onChamada");
+            });
+
+            windowHandler.on(events.onChamadaTransferida, function (event, ramal, chamada) {
+               showMessage("Ligação transferida");
+            });
+
+            windowHandler.on(events.onAtendido, function (event, ramal, chamada) {
+               setOpenPage("onAtendido", $.makeArray(arguments));
+               console.log(chamada);
+
+               btnDesligar.show();
+               btnDiscar.hide();
+               groupTelefone.hide();
+               btnAbrirFicha.show();
+               formTransferencia.show();
+               formConsultar.show();
+               btnConsultar.show();
+               btnLiberarConsulta.hide();
+
+               showMessage("Ligação atendida " + chamada.Telefone);
+
+               var identificador = chamada.CodigoCampanha ? chamada.CodigoCliente : chamada.Telefone;
+
+               if (!ultimoGlobalId) {
+                  ultimoGlobalId = chamada.GlobalId;
+               }
+
+               abrirFichaCliente(chamada.GlobalId);
+            });
+
+            windowHandler.on(events.onChamadaGlobalId, function (event, ramal, chamada, globalId) {
+               ultimoGlobalId = globalId;
+            });
+
+            /* Eventos de Tela */
+            $("#btnAbrirFicha").click(function () {
+               abrirFichaCliente(ultimoGlobalId);
+            })
+
+            $("#btnLoggin").click(function () {
+               var tipoLogon = adapter.TipoLogon.RamalVirtual;
+               var idPaOrIpOrRamal = "0";
+               var usuario = $("#txtLogin").val();
+               var senha = $("#txtSenha").val();
+
+               if (!usuario) {
+                  showMessage("Informe o usuário");
+                  return;
+               }
+
+               if (!senha) {
+                  showMessage("Informe a senha");
+                  return;
+               }
+
+               if (usuario == "admin") {
+                  isAdmin = true;
+               }
+
+               adapter.login(usuario, senha, idPaOrIpOrRamal, tipoLogon)
+                  .then(adapter.conectarSignalr)
+                  .then(adapter.iniciarAtendimento)
+                  .fail(loginError);
+
+               return false;
+            });
+
+            $("#btnDeslogar").click(function () {
+               deslogar()
+               return false;
+            });
+
+            $("#txtNumeroConsultar, #txtNumeroDiscagem").change(function(e) {
+              sessionStorage.setItem(e.target.id, e.target.value);
+            });
+
+            $("#btnDiscar").click(function () {
+               var numero = $("#txtNumeroDiscagem").val();
+               discar(numero);
+               return false;
+            });
+
+            $("#btnTransferir").click(function () {
+               var numero = $("#txtNumeroConsultar").val();
+               transferir(numero);
+               return false;
+            });
+
+            $("#btnConsultar").click(function () {
+               var numero = $("#txtNumeroConsultar").val();
+               consultar(numero);
+               return false;
+            });
+
+            $("#btnLiberarConsulta").click(function () {
+               liberarConsulta();
+               return false;
+            });
+
+            $("#btnDesligar").click(function () {
+               adapter.server.desligar().fail(function () {
+                  btnDesligar.hide();
+                  formTransferencia.hide();
+                  btnLiberarConsulta.hide();
+                  formConsultar.hide();
+                  btnDiscar.show();
+                  groupTelefone.show();
+                  showMessage("Erro ao desligar ligação");
+               });
+
+               return false;
+            });
+
+            $("#intervaloSelect").change(function () {
+               let intervalo = $(this).val();
+
+               console.log("intervalo " + intervalo);
+
+               adapter.server.alterarIntervaloTipo(intervalo).fail(function () {
+                  showMessage("Erro ao alterar intervalo");
+               });
+            });
+
+            $('#txtNumeroConsultar').on('input', function() {
+               isLigacaoExterna = $(this).val().length > 6;
+
+               if (isLigacaoExterna) btnTransferir.prop("disabled", true);
+               else btnTransferir.prop("disabled", false);
+            })
+
+            let ss;
+            if (ss = sessionStorage.getItem("txtNumeroConsultar")) $("#txtNumeroConsultar").val(ss);
+            if (ss = sessionStorage.getItem("txtNumeroDiscagem")) $("#txtNumeroDiscagem").val(ss);
+            
+            adapter.loadStorage();
+         });
+
+      </script>
+   </head>
+
+   <body>
+
+      <div class="panel panel-default">
+         <div class="panel-heading">
+            <img src="https://manager.epbx.com.br/assets/img/logo.png" height="30" />
+            <button style="float: right; margin:5px;" type="Button" id="btnDeslogar" class="btn btn-danger btn-sm"><i
+                  class="fas fa-user"></i> </button>
+            <button style="float: right; margin:5px;" type="Button" id="btnAbrirFicha" class="btn btn-info btn-sm"><i
+                  class="fas fa-address-card"></i> </button>
+         </div>
+         <div class="panel-body">
+            <div class="container-fluid">
+               <div class="row">
+                  <div style="text-align: center;"><span id="statusText" style="font-size: 14px;"></span></div>
+
+               </div>
+
+               <div id="panelLogin" class="row">
+                  <div class="col">
+                     <div id="formLogin" class="row">
+                        <div class="col">
+                           <div class="form-group">
+                              <label for="usernameInput">Usuário</label>
+                              <input type="text" id="txtLogin" class="form-control" value="" />
+                           </div>
+                           <div class="form-group">
+                              <label for="passwordInput">Senha</label>
+                              <input type="password" id="txtSenha" class="form-control" value="" />
+                           </div>
+                           <button type="Button" id="btnLoggin" class="btn btn-success btn-block">Logar</button>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <div id="panelRamal" class="row">
+                  <div class="col">
+                     <div id="formLogado" class="row">
+                        <div class="col">
+                           <div class="form-group">
+                              <label for="intervaloSelect">Intervalo</label>
+                              <select id="intervaloSelect" class="form-control">
+                                 <option value="-1">Selecione um intervalo</option>
+                              </select>
+                           </div>
+                        </div>
+                     </div>
+                     <div id="formDiscagem" class="row" style="min-width: 198px;">
+                        <div class="col">
+                           <div class="form-group" id="group-telefone">
+                              <label for="txtNumeroDiscagem">Telefone</label>
+                              <input type="text" id="txtNumeroDiscagem" class="form-control" value="" />
+                           </div>
+                           <button type="button" id="btnDiscar" class="btn btn-success btn-block">Discar</button>
+                           <button type="button" id="btnDesligar" class="btn btn-danger btn-block">Desligar</button>
+                        </div>
+                     </div>
+
+                     <div id="formConsultar" class="row">
+                        <div class="col">
+                           <div class="form-group">
+                              <label for="txtNumeroConsultar">Consultar</label>
+                              <input type="text" id="txtNumeroConsultar" class="form-control" value="" />
+                           </div>
+                           <button type="button" id="btnConsultar" class="btn btn-success btn-block">Consultar</button>
+                           <button type="button" id="btnLiberarConsulta" class="btn btn-primary btn-block">
+                              Liberar Consulta
+                           </button>
+                        </div>
+                     </div>
+
+                     <div id="formTransferencia" class="row">
+                        <div class="col">
+                           <button type="button" id="btnTransferir"
+                              class="btn btn-success btn-block">Transferir</button>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   </body>
+
+   </html>
+</apex:page>
