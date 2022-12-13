@@ -4,7 +4,7 @@
     <br>
     <p>Todos os links <a src="https://manager.epbx.com.br">https://manager.epbx.com.br</a> precisam ser substituídos pelo link da integração do cliente.</p>
     <br>
-    <h1>Passos:</h1>
+    <p>Passos:</p>
 
     <p>Fazer deploy/upload do Recurso estático para o Salesforce que está presente na pasta "staticresource"/p>
 
